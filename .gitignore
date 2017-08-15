@@ -1,1 +1,5 @@
-.idea/
+# Python compiled  and temporary files
+*.py[c~]
+
+# PyCharm project files
+.idea/*
