@@ -49,35 +49,6 @@ print("Accuracy : %.4g" % metrics.accuracy_score(test_predictions, y_pred))
 print("Log Loss Score (Train): %f" % metrics.log_loss(test_predictions, y_pred_prob))
 # ------------------------PREDICT WITH SPLIT TRAINING SET END---------------------------------
 
-# # ------------------------PREDICT WITH TEST SET---------------------------------
-# # load test set
-# X_test = np.loadtxt(path + fname_test, delimiter=',', skiprows=1, usecols=range(1, 94))
-# # fit model with entire training set
-# model.fit(X_train, y_train)
-# # make predictions for test set
-# y_pred = model.predict(X_test)
-#
-# # print out predictions on test set
-# print('\nPredictions on test set:')
-# print(y_pred)
-#
-# # tabulate predictions
-# predictions = np.zeros((144368, 10), dtype=np.int)
-# for i in range(0, 144368):
-#     predictions[i][0] = i + 1
-#     col = y_pred[i] + 1
-#     predictions[i][col] = 1
-#
-# print('\nPredictions (tabulated):')
-# print(predictions)
-#
-# # save predictions into .csv file
-# fname_submission = 'kaggle-otto-submission.csv'
-# with open(fname_submission, 'wb') as file:
-#     file.write(b'id,Class_1,Class_2,Class_3,Class_4,Class_5,Class_6,Class_7,Class_8,Class_9\n')
-#     np.savetxt(file, predictions.astype(int), fmt='%i', delimiter=',')
-# # ------------------------PREDICT WITH TEST SET END---------------------------------
-
 # stop timer
 end = time.time()
 print('\nTotal time : {:.2f} {}'.format((end - start) / 60, 'minutes'))
