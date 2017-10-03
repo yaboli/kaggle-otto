@@ -11,6 +11,7 @@ from sklearn.feature_selection import SelectFromModel
 from sklearn.preprocessing import label_binarize
 from sklearn.preprocessing import normalize
 from scipy import interp
+from scipy.stats import ks_2samp
 import time
 
 path = '../'
@@ -85,27 +86,43 @@ print("Accuracy : %.4g" % metrics.accuracy_score(test_predictions, y_pred))
 print("Log Loss Score : %f" % metrics.log_loss(test_predictions, y_pred_prob))
 print("Parameters: {}".format(model.get_xgb_params()))
 
-# compute PSI
-# group PSIs by class
-dict_psi = dict()
-expected = 1
+# perform Kolmogorov-Smirnov test
+# group test data by classes
+dict_ks = dict()
 for i in range(0, len(test_predictions)):
     label_index = test_predictions[i]
-    actual = y_pred_prob[i][label_index]
-    Ac_Ex = actual/expected
-    psi = (actual - expected) * (np.log(Ac_Ex))
     label = str(label_index)
-    if label in dict_psi:
-        dict_psi[label].append(psi)
+    if label in dict_ks:
+        dict_ks[label].append(test_data[i])
     else:
-        dict_psi[label] = [psi]
+        dict_ks[label] = [test_data[i]]
 
-# calculate mean psi of each class
-means = []
+# compute accuracy for each class
+array_pg = []
+array_pb = []
+diff = []
 for j in range(0, 9):
-    means.append(np.mean(dict_psi[str(j)]))
+    label = str(j)
+    y = model.predict(dict_ks[label])
+    pred = np.full(len(dict_ks[label]), j)
+    Pg = metrics.accuracy_score(pred, y)
+    array_pg.append(Pg)
+    Pb = 1 - Pg
+    array_pb.append(Pb)
+    diff.append(abs(Pg - Pb))
 
-print('Population stability index: {:.4f}'.format(np.sum(means)))
+ks_result = ks_2samp(array_pg, array_pb)
+print('Kolmogorov-Smirnov test: statistic = {}, pvalue = {}; Max|F1 - F2|: {:.4f}'.format(ks_result.statistic, ks_result.pvalue, np.amax(diff)))
+
+# compute PSI
+# training ratio
+Rg_t = metrics.accuracy_score(train_predictions, model.predict(train_data))
+Rb_t = 1 - Rg_t
+# validation ratio
+Rg_v = metrics.accuracy_score(test_predictions, y_pred)
+Rb_v = 1 - Rg_v
+PSI = (Rg_t - Rg_v)*np.log(Rg_t/Rg_v) + (Rb_t - Rb_v)*np.log(Rb_t/Rb_v)
+print('Population stability index: {:.4f}'.format(PSI))
 
 # Compute ROC curve and ROC area for each class
 fpr = dict()
