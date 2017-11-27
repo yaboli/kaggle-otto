@@ -38,8 +38,8 @@ print('Preprocessing completed')
 # initialize xgb classifier
 model = xgb.XGBClassifier(
     learning_rate=0.1,
-    # n_estimators=100,
-    n_estimators=615,
+    n_estimators=100,
+    # n_estimators=615,
     max_depth=5,
     min_child_weight=1,
     gamma=0.2,
@@ -69,6 +69,7 @@ train_data, test_data, train_predictions, test_predictions = train_test_split(X_
                                                                               test_size=test_size)
 # Binarize predictions
 y_b = label_binarize(test_predictions, classes=range(0, 9))
+print(y_b)
 n_classes = y_b.shape[1]
 
 # fit model with partial training set
@@ -80,6 +81,7 @@ print('Fitting completed')
 print('\nPredicting with trained model...')
 y_pred = model.predict(test_data)
 y_pred_prob = model.predict_proba(test_data)
+print(y_pred_prob)
 print('Prediction completed')
 print("\n-------------Model Report (on split training set, 9:1)-------------")
 print("Accuracy : %.4g" % metrics.accuracy_score(test_predictions, y_pred))
