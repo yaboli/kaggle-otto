@@ -20,7 +20,8 @@ X_train = train.values
 # initialize xgboost model
 model = XGBClassifier(
     learning_rate=0.1,
-    n_estimators=615,
+    # n_estimators=615,
+    n_estimators=100,
     max_depth=5,
     min_child_weight=1,
     gamma=0,

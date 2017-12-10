@@ -105,7 +105,7 @@ model = xgb.XGBClassifier(max_depth=10, subsample=0.70, colsample_bytree=0.7, ob
 model.fit(train_X, train_Y)
 
 # bst = xgb.train(param, xg_train, num_round, watchlist)
-# get prediction
+# get prediction_cascaded
 # pred = bst.predict(xg_test)
 
 res = model.predict(test_X)
@@ -197,7 +197,7 @@ param['objective'] = 'multi:softprob'
 bst = xgb.train(param, xg_train, num_round, watchlist)
 #print(xgb.get_score())
 # Note: this convention has been changed since xgboost-unity
-# get prediction, this is in 1D array, need reshape to (ndata, nclass)
+# get prediction_cascaded, this is in 1D array, need reshape to (ndata, nclass)
 pred_prob = bst.predict(xg_test).reshape(test_Y.shape[0], param['num_class'])
 pred_label = np.argmax(pred_prob, axis=1)
 print(bst.get_score())

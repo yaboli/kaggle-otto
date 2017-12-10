@@ -1,13 +1,10 @@
-from __future__ import print_function
-
 import numpy as np
-import pandas as pd
-from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import label_binarize
 import tensorflow as tf
 from pathlib import Path
 import shutil
+from Model.preprocess import preprocess
 
 # Delete old model data and event summaries
 dir1 = './model_data'
@@ -19,30 +16,17 @@ if path1.is_dir():
 if path2.is_dir():
     shutil.rmtree(dir2)
 
-path = '../'
-fname_train = 'train.csv'
+model_path = './model_data/model_ann.ckpt'
 
-# load training set
-data = pd.read_csv(path + fname_train)
-# drop 'id' column from training set
-data.drop('id', axis=1, inplace=True)
-# extract data in the 'target' column and convert them to numeric
-labels = data['target'].values
-le_y = LabelEncoder()
-labels = le_y.fit_transform(labels)
-# drop 'target' column from training set
-data.drop('target', axis=1, inplace=True)
-inputs = data.values
+inputs, labels = preprocess()
 
 # split training set into train set and test set (for purpose of quicker observation)
-test_size = 0.1
-X_train, X_test, y_train, y_test = train_test_split(inputs,
-                                                    labels,
-                                                    test_size=test_size)
-# Encode lables
+cv_size = 0.3
+X_train, X_cv, y_train, y_cv = train_test_split(inputs, labels, test_size=cv_size)
+# Encode labels
 num_classes = 9
 y_train_enc = label_binarize(y_train, classes=range(0, 9))
-y_test_enc = label_binarize(y_test, classes=range(0, 9))
+y_cv_enc = label_binarize(y_cv, classes=range(0, 9))
 
 # Parameters
 learning_rate = 0.0001
@@ -50,12 +34,13 @@ batch_size = 100
 epochs = 200
 display_step = 1
 keep_prob = 0.75
-model_path = './model_data/model_ann.ckpt'
+beta = 0.01
+epsilon = 0.001
 
 # Network Parameters
 n_hidden_1 = 512  # 1st layer number of neurons
 n_hidden_2 = 256  # 2nd layer number of neurons
-num_input = 93  # number of features
+num_input = X_train.shape[1]  # number of features
 
 # tf Graph input
 X = tf.placeholder("float", [None, num_input])
@@ -73,12 +58,12 @@ biases = {
     'out': tf.Variable(tf.random_normal([num_classes]), name='B_OUT')
 }
 
-# Add histogram summaries for weights
+# Add histogram summaries for weights_cascaded
 tf.summary.histogram('w_h1_summ', weights['h1'])
 tf.summary.histogram('w_h2_summ', weights['h2'])
 tf.summary.histogram('w_out_summ', weights['out'])
 
-# Add histogram summaries for biases
+# Add histogram summaries for biases_cascaded
 tf.summary.histogram('b_h1_summ', biases['b1'])
 tf.summary.histogram('b_h2_summ', biases['b2'])
 tf.summary.histogram('b_out_summ', biases['out'])
@@ -86,9 +71,19 @@ tf.summary.histogram('b_out_summ', biases['out'])
 
 def neural_net_model(x):
     # Hidden fully connected layer with 512 neurons, Relu activation, 0.75 dropout
-    layer_1 = tf.nn.dropout(tf.nn.relu(tf.add(tf.matmul(x, weights['h1']), biases['b1'])), keep_prob=keep_prob)
+    z1 = tf.add(tf.matmul(x, weights['h1']), biases['b1'])
+    batch_mean_1, batch_var_1 = tf.nn.moments(z1, [0])
+    scale_bn_1 = tf.Variable(tf.ones([n_hidden_1]))
+    beta_bn_1 = tf.Variable(tf.zeros([n_hidden_1]))
+    bn1 = tf.nn.batch_normalization(z1, batch_mean_1, batch_var_1, beta_bn_1, scale_bn_1, epsilon)
+    layer_1 = tf.nn.dropout(tf.nn.relu(bn1), keep_prob=keep_prob)
     # Hidden fully connected layer with 256 neurons, Relu activation, 0.75 dropout
-    layer_2 = tf.nn.dropout(tf.nn.relu(tf.add(tf.matmul(layer_1, weights['h2']), biases['b2'])), keep_prob=keep_prob)
+    z2 = tf.add(tf.matmul(layer_1, weights['h2']), biases['b2'])
+    batch_mean_2, batch_var_2 = tf.nn.moments(z2, [0])
+    scale_bn_2 = tf.Variable(tf.ones([n_hidden_2]))
+    beta_bn_2 = tf.Variable(tf.zeros([n_hidden_2]))
+    bn2 = tf.nn.batch_normalization(z2, batch_mean_2, batch_var_2, beta_bn_2, scale_bn_2, epsilon)
+    layer_2 = tf.nn.dropout(tf.nn.relu(bn2), keep_prob=keep_prob)
     # Output fully connected layer with 1 neuron for each class
     out_layer = tf.matmul(layer_2, weights['out']) + biases['out']
     return out_layer
@@ -100,6 +95,8 @@ prediction = neural_net_model(X)
 with tf.name_scope("cost"):
     # Define loss and optimizer
     cost = tf.reduce_mean((tf.nn.softmax_cross_entropy_with_logits(logits=prediction, labels=Y)))
+    regularizers = tf.nn.l2_loss(weights['h1']) + tf.nn.l2_loss(weights['h2'])
+    cost = tf.reduce_mean(cost + beta * regularizers)
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
     # Add scalar summary for cost tensor
     tf.summary.scalar("cost", cost)
@@ -126,8 +123,10 @@ with tf.Session() as sess:
     sess.run(init)
 
     # op to write logs to Tensorboard
-    train_writer = tf.summary.FileWriter("C:/Users/Think/AnacondaProjects/tmp/otto/logs/nn_logs")
+    train_writer = tf.summary.FileWriter("C:/Users/Think/AnacondaProjects/tmp/otto/logs/train")
     train_writer.add_graph(sess.graph)
+    cv_writer = tf.summary.FileWriter("C:/Users/Think/AnacondaProjects/tmp/otto/logs/validation")
+    cv_writer.add_graph(sess.graph)
 
     # Training cycle
     for epoch in range(epochs):
@@ -143,13 +142,18 @@ with tf.Session() as sess:
                                                           Y: batch_y})
             # Compute average loss
             avg_cost += c / total_batch
-        # Record train set summary per epoch step
-        summary = sess.run(merged, feed_dict={X: X_train,
-                                              Y: y_train_enc})
-        train_writer.add_summary(summary, epoch)
+
         # Display logs per epoch step
         if epoch % display_step == 0:
             print("Epoch:", "%04d" % (epoch + 1), "cost=", "{:.9f}".format(avg_cost))
+
+        # Write summary after each training epoch
+        train_summary = sess.run(merged, feed_dict={X: X_train,
+                                                    Y: y_train_enc})
+        train_writer.add_summary(train_summary, epoch)
+        cv_summary = sess.run(merged, feed_dict={X: X_cv,
+                                                 Y: y_cv_enc})
+        cv_writer.add_summary(cv_summary, epoch)
 
     print("Optimization Finished!")
     train_writer.close()
