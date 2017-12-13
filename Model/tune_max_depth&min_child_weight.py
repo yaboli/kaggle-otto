@@ -1,39 +1,27 @@
-import pandas as pd
 from xgboost.sklearn import XGBClassifier
-from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import StratifiedKFold
+from Model.preprocess import preprocess
 import time
 
-# read training data
-train = pd.read_csv('../train.csv')
-# drop 'id' column
-train.drop('id', axis=1, inplace=True)
-# extract data in the 'target' column and convert to numeric
-y_train = train['target'].values
-le_y = LabelEncoder()
-y_train = le_y.fit_transform(y_train)
-# drop 'target' column
-train.drop('target', axis=1, inplace=True)
-X_train = train.values
+X_train, y_train = preprocess()
 
 # initialize xgboost model
 model = XGBClassifier(
     learning_rate=0.1,
-    # n_estimators=615,
     n_estimators=100,
     max_depth=5,
     min_child_weight=1,
     gamma=0,
     subsample=0.8,
     colsample_bytree=0.8,
-    scale_pos_weight=1,
     objective='multi:softprob',
     seed=27)
 
 # set grid search parameters
-max_depth = [3, 5, 7, 9]
-min_child_weight = [1, 3, 5]
+max_depth = range(3, 10, 2)  # optimal: 9
+min_child_weight = range(1, 6, 2)  # optimal: 1
+num_fits = len(max_depth)*len(min_child_weight)*5
 param_grid = dict(max_depth=max_depth,
                   min_child_weight=min_child_weight)
 
@@ -42,8 +30,8 @@ grid_search = GridSearchCV(model,
                            param_grid,
                            scoring="neg_log_loss",
                            cv=kfold,
-                           iid=False, # not sure about this parameter
-                           verbose=10)
+                           iid=False,  # not sure about this parameter
+                           verbose=num_fits)
 
 start = time.time()
 grid_result = grid_search.fit(X_train, y_train)

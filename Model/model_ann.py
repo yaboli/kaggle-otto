@@ -33,7 +33,7 @@ learning_rate = 0.0001
 batch_size = 100
 epochs = 200
 display_step = 1
-keep_prob = 0.75
+keep_prob = 0.5
 beta = 0.01
 epsilon = 0.001
 
@@ -85,7 +85,11 @@ def neural_net_model(x):
     bn2 = tf.nn.batch_normalization(z2, batch_mean_2, batch_var_2, beta_bn_2, scale_bn_2, epsilon)
     layer_2 = tf.nn.dropout(tf.nn.relu(bn2), keep_prob=keep_prob)
     # Output fully connected layer with 1 neuron for each class
-    out_layer = tf.matmul(layer_2, weights['out']) + biases['out']
+    z3 = tf.add(tf.matmul(layer_2, weights['out']), biases['out'])
+    batch_mean_3, batch_var_3 = tf.nn.moments(z3, [0])
+    scale_bn_3 = tf.Variable(tf.ones([num_classes]))
+    beta_bn_3 = tf.Variable(tf.zeros([num_classes]))
+    out_layer = tf.nn.batch_normalization(z3, batch_mean_3, batch_var_3, beta_bn_3, scale_bn_3, epsilon)
     return out_layer
 
 
@@ -97,7 +101,11 @@ with tf.name_scope("cost"):
     cost = tf.reduce_mean((tf.nn.softmax_cross_entropy_with_logits(logits=prediction, labels=Y)))
     regularizers = tf.nn.l2_loss(weights['h1']) + tf.nn.l2_loss(weights['h2'])
     cost = tf.reduce_mean(cost + beta * regularizers)
-    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
+    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate,
+                                       beta1=0.9,
+                                       beta2=0.999,
+                                       epsilon=epsilon
+                                       ).minimize(cost)
     # Add scalar summary for cost tensor
     tf.summary.scalar("cost", cost)
 

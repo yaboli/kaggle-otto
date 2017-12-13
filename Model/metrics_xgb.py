@@ -15,7 +15,7 @@ fname_test = 'test.csv'
 inputs, labels = preprocess()
 
 # split training set into train set and cv set (for purpose of quicker observation)
-test_size = 0.1
+test_size = 0.3
 X_train, X_cv, y_train, y_cv = train_test_split(inputs, labels, test_size=test_size)
 # apply one-hot encoding to cv labels
 y_cv_enc = label_binarize(y_cv, classes=range(0, 9))
@@ -65,12 +65,12 @@ roc_auc["macro"] = metrics.auc(fpr["macro"], tpr["macro"])
 plt.figure()
 lw = 2
 plt.plot(fpr["micro"], tpr["micro"],
-         label='micro-average ROC curve (area = {0:0.2f})'
+         label='micro-average ROC curve (area = {0:0.6f})'
                ''.format(roc_auc["micro"]),
          color='deeppink', linestyle=':', linewidth=4)
 
 plt.plot(fpr["macro"], tpr["macro"],
-         label='macro-average ROC curve (area = {0:0.2f})'
+         label='macro-average ROC curve (area = {0:0.6f})'
                ''.format(roc_auc["macro"]),
          color='navy', linestyle=':', linewidth=4)
 
@@ -116,8 +116,8 @@ plt.close()
 #     array_pb.append(Pb)
 #     diff.append(abs(Pg - Pb))
 #
-# ks_result = ks_2samp(array_pg, array_pb)
-# print('Kolmogorov-Smirnov test: statistic = {}, pvalue = {}; Max|F1 - F2|: {:.4f}'.format(ks_result.statistic, ks_result.pvalue, np.amax(diff)))
+# ks_result = ks_2samp(array_pg, array_pb) print('Kolmogorov-Smirnov test: statistic = {}, pvalue = {}; Max|F1 - F2|:
+#  {:.4f}'.format(ks_result.statistic, ks_result.pvalue, np.amax(diff)))
 #
 # # ------------------ PSI ------------------
 # # training ratio

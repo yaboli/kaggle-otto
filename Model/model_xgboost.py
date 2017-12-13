@@ -5,9 +5,6 @@ import pickle
 import time
 from Model.preprocess import preprocess
 
-path = '../'
-fname_train = 'train.csv'
-
 # start timer
 start = time.time()
 
@@ -17,17 +14,16 @@ inputs, labels = preprocess()
 model = xgb.XGBClassifier(
     learning_rate=0.1,
     n_estimators=100,
-    # n_estimators=615,
-    max_depth=5,
+    max_depth=9,
     min_child_weight=1,
     gamma=0.2,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    scale_pos_weight=1,
+    subsample=0.7,
+    colsample_bytree=0.9,
+    reg_lambda=0.01,
     objective='multi:softprob'
 )
 
-# split training set into train set and test set (for purpose of quicker observation)
+# split data into train data and validation data (for purpose of quicker observation)
 test_size = 0.3
 X_train, _, y_train, _ = train_test_split(inputs, labels, test_size=test_size)
 # fit model with partial training set

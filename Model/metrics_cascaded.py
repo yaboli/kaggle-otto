@@ -66,7 +66,11 @@ def model_ann(x):
     bn2 = tf.nn.batch_normalization(z2, batch_mean_2, batch_var_2, beta_bn_2, scale_bn_2, epsilon)
     layer_2 = tf.nn.relu(bn2)
     # Output fully connected layer with 1 neuron for each class
-    out_layer = tf.matmul(layer_2, weights['out']) + biases['out']
+    z3 = tf.add(tf.matmul(layer_2, weights['out']), biases['out'])
+    batch_mean_3, batch_var_3 = tf.nn.moments(z3, [0])
+    scale_bn_3 = tf.Variable(tf.ones([num_classes]))
+    beta_bn_3 = tf.Variable(tf.zeros([num_classes]))
+    out_layer = tf.nn.batch_normalization(z3, batch_mean_3, batch_var_3, beta_bn_3, scale_bn_3, epsilon)
     return out_layer
 
 
@@ -123,12 +127,12 @@ roc_auc["macro"] = metrics.auc(fpr["macro"], tpr["macro"])
 plt.figure()
 lw = 2
 plt.plot(fpr["micro"], tpr["micro"],
-         label='micro-average ROC curve (area = {0:0.2f})'
+         label='micro-average ROC curve (area = {0:0.6f})'
                ''.format(roc_auc["micro"]),
          color='deeppink', linestyle=':', linewidth=4)
 
 plt.plot(fpr["macro"], tpr["macro"],
-         label='macro-average ROC curve (area = {0:0.2f})'
+         label='macro-average ROC curve (area = {0:0.6f})'
                ''.format(roc_auc["macro"]),
          color='navy', linestyle=':', linewidth=4)
 
