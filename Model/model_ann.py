@@ -165,6 +165,14 @@ with tf.Session() as sess:
 
     print("Optimization Finished!")
     train_writer.close()
+
+    # Print out results
+    print("\n------------- Model report -------------")
+    print("Cost (train):", cost.eval({X: X_train, Y: y_train_enc}))
+    print("Accuracy (train):", accuracy.eval({X: X_train, Y: y_train_enc}))
+    print("Cost (validation):", cost.eval({X: X_cv, Y: y_cv_enc}))
+    print("Accuracy (validation):", accuracy.eval({X: X_cv, Y: y_cv_enc}))
+
     # Save model
     save_path = saver.save(sess, model_path)
     print("Model saved in file: %s" % save_path)

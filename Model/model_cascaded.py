@@ -133,5 +133,13 @@ model.compile(loss='binary_crossentropy',
               metrics=['accuracy'])
 # Train compiled model
 model.fit(X_train, y_train_enc, epochs=100, batch_size=100)
+# Print results
+score_train = model.evaluate(X_train, y_train_enc, verbose=0)
+score_cv = model.evaluate(X_cv, y_cv_enc, verbose=0)
+print("\n------------- Model Report -------------")
+print('Train score: {:.6f}'.format(score_train[0]))
+print('Train accuracy: {:.6f}'.format(score_train[1]))
+print('Validation score: {:.6f}'.format(score_cv[0]))
+print('Validation accuracy: {:.6f}'.format(score_cv[1]))
 # Save trained model
 model.save('model_cascaded.h5')

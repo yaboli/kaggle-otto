@@ -1,22 +1,17 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from itertools import cycle
-from sklearn.model_selection import train_test_split
 from sklearn import metrics
 import tensorflow as tf
 from sklearn.preprocessing import label_binarize
 from scipy import interp
 from Model.preprocess import preprocess
 
-
 inputs, labels = preprocess()
 
-# split training set into train set and test set (for purpose of quicker observation)
-test_size = 0.3
-_, X_cv, _, y_cv = train_test_split(inputs, labels, test_size=test_size)
 # Encode labels
 num_classes = 9
-y_cv_enc = label_binarize(y_cv, classes=range(0, 9))
+labels_enc = label_binarize(labels, classes=range(0, 9))
 
 # Parameters
 model_path = 'D:/kaggle-otto/Model/model_data/model_ann.ckpt'
@@ -24,7 +19,7 @@ model_path = 'D:/kaggle-otto/Model/model_data/model_ann.ckpt'
 # Network Parameters
 n_hidden_1 = 512  # 1st layer number of neurons
 n_hidden_2 = 256  # 2nd layer number of neurons
-num_input = X_cv.shape[1]  # number of features
+num_input = inputs.shape[1]  # number of features
 epsilon = 0.001
 
 tf.reset_default_graph()
@@ -85,11 +80,7 @@ saver = tf.train.Saver()
 with tf.Session() as sess:
     # Restore variables from disk.
     saver.restore(sess, model_path)
-    # Evaluate costs and accuracies
-    print("\n------------- Model report -------------")
-    print("Cost (validation):", cost.eval({X: X_cv, Y: y_cv_enc}))
-    print("Accuracy (validation):", accuracy.eval({X: X_cv, Y: y_cv_enc}))
-    y_pred_prob_cv = sess.run(tf.nn.softmax(prediction), feed_dict={X: X_cv})
+    y_pred_prob_cv = sess.run(tf.nn.softmax(prediction), feed_dict={X: inputs})
 
 # ------------------ ROC ------------------
 # Compute ROC curve and ROC area for each class
@@ -97,11 +88,11 @@ fpr = dict()
 tpr = dict()
 roc_auc = dict()
 for i in range(num_classes):
-    fpr[i], tpr[i], _ = metrics.roc_curve(y_cv_enc[:, i], y_pred_prob_cv[:, i])
+    fpr[i], tpr[i], _ = metrics.roc_curve(labels_enc[:, i], y_pred_prob_cv[:, i])
     roc_auc[i] = metrics.auc(fpr[i], tpr[i])
 
 # Compute micro-average ROC curve and ROC area
-fpr["micro"], tpr["micro"], _ = metrics.roc_curve(y_cv_enc.ravel(), y_pred_prob_cv.ravel())
+fpr["micro"], tpr["micro"], _ = metrics.roc_curve(labels_enc.ravel(), y_pred_prob_cv.ravel())
 roc_auc["micro"] = metrics.auc(fpr["micro"], tpr["micro"])
 
 # Compute macro-average ROC curve and ROC area; first aggregate all false positive rates

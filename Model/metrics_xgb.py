@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from itertools import cycle
-from sklearn.model_selection import train_test_split
 from sklearn import metrics
 from sklearn.preprocessing import label_binarize
 from sklearn.preprocessing import normalize
@@ -14,24 +13,16 @@ fname_test = 'test.csv'
 
 inputs, labels = preprocess()
 
-# split training set into train set and cv set (for purpose of quicker observation)
-test_size = 0.3
-X_train, X_cv, y_train, y_cv = train_test_split(inputs, labels, test_size=test_size)
-# apply one-hot encoding to cv labels
-y_cv_enc = label_binarize(y_cv, classes=range(0, 9))
-n_classes = y_cv_enc.shape[1]
+# apply one-hot encoding to labels
+labels_enc = label_binarize(labels, classes=range(0, 9))
+n_classes = labels_enc.shape[1]
 
 model = pickle.load(open("D:/kaggle-otto/Model/otto_xgb.pickle.dat", "rb"))
 
-# evaluate predictions
+# predict
 print('\nPredicting with trained model...')
-y_pred = model.predict(X_cv)
-y_pred_prob = model.predict_proba(X_cv)
+y_pred_prob = model.predict_proba(inputs)
 print('Prediction completed')
-print("\n------------- Model Report -------------")
-print("Accuracy : %.4g" % metrics.accuracy_score(y_cv, y_pred))
-print("Log Loss Score : %f" % metrics.log_loss(y_cv, y_pred_prob))
-print("Parameters: {}".format(model.get_xgb_params()))
 
 # ------------------ ROC ------------------
 # Compute ROC curve and ROC area for each class
@@ -39,11 +30,11 @@ fpr = dict()
 tpr = dict()
 roc_auc = dict()
 for i in range(n_classes):
-    fpr[i], tpr[i], _ = metrics.roc_curve(y_cv_enc[:, i], y_pred_prob[:, i])
+    fpr[i], tpr[i], _ = metrics.roc_curve(labels_enc[:, i], y_pred_prob[:, i])
     roc_auc[i] = metrics.auc(fpr[i], tpr[i])
 
 # Compute micro-average ROC curve and ROC area
-fpr["micro"], tpr["micro"], _ = metrics.roc_curve(y_cv_enc.ravel(), y_pred_prob.ravel())
+fpr["micro"], tpr["micro"], _ = metrics.roc_curve(labels_enc.ravel(), y_pred_prob.ravel())
 roc_auc["micro"] = metrics.auc(fpr["micro"], tpr["micro"])
 
 # Compute macro-average ROC curve and ROC area; first aggregate all false positive rates
@@ -124,7 +115,7 @@ plt.close()
 # Rg_t = metrics.accuracy_score(y_train, model.predict(X_train))
 # Rb_t = 1 - Rg_t
 # # validation ratio
-# Rg_v = metrics.accuracy_score(y_cv, y_pred)
+# Rg_v = metrics.accuracy_score(y_cv, y_pred_cv)
 # Rb_v = 1 - Rg_v
 # PSI = (Rg_t - Rg_v)*np.log(Rg_t/Rg_v) + (Rb_t - Rb_v)*np.log(Rb_t/Rb_v)
 # print('Population stability index: {:.4f}'.format(PSI))
